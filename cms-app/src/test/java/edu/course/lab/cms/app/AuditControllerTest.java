@@ -108,8 +108,16 @@ class AuditControllerTest {
 
     @Test
     void rejectsInvalidPageFiltersAndTimeRange() throws Exception {
+        var listCalls = new java.util.concurrent.atomic.AtomicInteger();
+        var service = new AuditService(null) {
+            @Override
+            public PageResult<AuditEntry> list(AuditFilter filter) {
+                listCalls.incrementAndGet();
+                return super.list(filter);
+            }
+        };
         try (var validator = validator()) {
-            var mvc = mvc(usersWith(Set.of("audit.read")), validator, stubService());
+            var mvc = mvc(usersWith(Set.of("audit.read")), validator, service);
 
             var badSize = mvc.perform(get("/api/audit/logs").param("size", "101"))
                     .andExpect(status().isBadRequest()).andReturn().getResponse();
@@ -128,6 +136,9 @@ class AuditControllerTest {
             assertEquals("VALIDATION_FAILED", json.readTree(badAction.getContentAsByteArray()).path("code").asText());
 
             for (String invalidTimestamp : List.of(
+                    "+10000-01-01T00:00:00",
+                    "-0001-01-01T00:00:00",
+                    "+2026-01-01T00:00:00",
                     "2026-11-26T10:00:00.100000.1",
                     "2026-11-26T10:00:00.1234567",
                     "2026-11-26T10:00:00.",
@@ -157,6 +168,8 @@ class AuditControllerTest {
                             .param("to", "2026-11-26T10:00:00"))
                     .andExpect(status().isBadRequest()).andReturn().getResponse();
             assertEquals("INVALID_TIME_RANGE", json.readTree(equalRange.getContentAsByteArray()).path("code").asText());
+
+            assertEquals(0, listCalls.get());
         }
     }
 

@@ -51,6 +51,9 @@ class PlatformUnitTest {
         assertEquals(LocalDateTime.of(2026, 11, 26, 10, 0, 0, 123_456_000),
                 AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.123456"));
 
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("+10000-01-01T00:00:00"));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("-0001-01-01T00:00:00"));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("+2026-01-01T00:00:00"));
         assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.100000.1"));
         assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.1234567"));
         assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00."));

@@ -8,11 +8,13 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 
 public class AuditFilter extends PageQuery {
     public static final DateTimeFormatter UTC_TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
-            .appendPattern("uuuu-MM-dd'T'HH:mm:ss")
+            .appendValue(ChronoField.YEAR, 4, 4, SignStyle.NEVER)
+            .appendPattern("-MM-dd'T'HH:mm:ss")
             .optionalStart()
             .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
             .optionalEnd()

@@ -1,0 +1,251 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "实验室安全 CMS 公共接口",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/cms"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "HTTP 存活检查",
+        "responses": {
+          "200": {
+            "description": "可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "code": "OK",
+                  "message": "成功",
+                  "data": {
+                    "status": "UP"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/logs": {
+      "get": {
+        "summary": "分页查询审计日志",
+        "description": "使用有 audit.read 权限的会话。时间参数为 UTC，本区间包含起点、排除终点。",
+        "security": [{ "SessionCookie": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 2147483647, "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "actorId", "in": "query", "schema": { "type": "integer", "format": "int64", "minimum": 1 } },
+          { "name": "action", "in": "query", "schema": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" }, "example": "PUBLISH" },
+          { "name": "from", "in": "query", "description": "起始时间（含），UTC ISO 本地日期时间格式（yyyy-MM-dd'T'HH:mm:ss，可选 1 至 6 位小数秒以匹配 TIMESTAMP(6)，不带时区标记或 Z）", "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?$" }, "example": "2026-11-26T00:00:00" },
+          { "name": "to", "in": "query", "description": "结束时间（不含），UTC ISO 本地日期时间格式（yyyy-MM-dd'T'HH:mm:ss，可选 1 至 6 位小数秒以匹配 TIMESTAMP(6)，不带时区标记或 Z）", "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?$" }, "example": "2026-11-27T00:00:00" }
+        ],
+        "responses": {
+          "200": {
+            "description": "分页结果",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuditResponse" },
+                "example": {
+                  "code": "OK",
+                  "message": "成功",
+                  "data": {
+                    "items": [{ "id": 1, "actorId": 2, "action": "PUBLISH", "targetType": "ARTICLE", "targetId": 3, "result": "SUCCESS", "occurredAt": "2026-11-26T09:00:00" }],
+                    "page": 1,
+                    "size": 20,
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数或时间范围无效",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "validationFailed": {
+                    "summary": "分页或筛选参数校验失败",
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "参数校验失败",
+                      "data": [{ "field": "size", "message": "must be less than or equal to 100" }]
+                    }
+                  },
+                  "invalidTimeRange": {
+                    "summary": "开始时间不早于结束时间",
+                    "value": {
+                      "code": "INVALID_TIME_RANGE",
+                      "message": "开始时间必须早于结束时间",
+                      "data": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "code": "UNAUTHENTICATED",
+                  "message": "请先登录",
+                  "data": null
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "缺少审计查询权限",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "code": "FORBIDDEN",
+                  "message": "没有审计查询权限",
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/db": {
+      "get": {
+        "summary": "MySQL 就绪检查",
+        "responses": {
+          "200": {
+            "description": "可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "code": "OK",
+                  "message": "成功",
+                  "data": {
+                    "status": "UP"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "数据库暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "DB_UNAVAILABLE",
+                  "message": "数据库暂不可用",
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "SessionCookie": { "type": "apiKey", "in": "cookie", "name": "JSESSIONID" }
+    },
+    "schemas": {
+      "AuditResponse": {
+        "type": "object",
+        "required": ["code", "message", "data"],
+        "properties": {
+          "code": { "type": "string", "enum": ["OK"] },
+          "message": { "type": "string" },
+          "data": {
+            "type": "object",
+            "required": ["items", "page", "size", "total"],
+            "properties": {
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/AuditEntry" } },
+              "page": { "type": "integer", "minimum": 1 },
+              "size": { "type": "integer", "minimum": 1, "maximum": 100 },
+              "total": { "type": "integer", "format": "int64", "minimum": 0 }
+            }
+          }
+        }
+      },
+      "AuditEntry": {
+        "type": "object",
+        "required": ["id", "actorId", "action", "targetType", "targetId", "result", "occurredAt"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "actorId": { "type": "integer", "format": "int64" },
+          "action": { "type": "string" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "result": { "type": "string", "enum": ["SUCCESS", "FAILURE"] },
+          "occurredAt": { "type": "string", "description": "UTC 时间，ISO 本地日期时间格式" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["OK"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "UP"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "FieldViolation": {
+        "type": "object",
+        "required": ["field", "message"],
+        "properties": {
+          "field": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["code", "message", "data"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/FieldViolation" }
+          }
+        }
+      }
+    }
+  }
+}

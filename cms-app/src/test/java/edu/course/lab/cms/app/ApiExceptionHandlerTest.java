@@ -79,14 +79,37 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void methodParameterConstraintReturnsValidationFailedWithFieldDetails() throws Exception {
-        var response = mvc.perform(get("/api/probe/param").param("limit", "0"))
+    void methodParameterConstraintAndTypeMismatchReturnSameFieldName() throws Exception {
+        var constraintResp = mvc.perform(get("/api/probe/param").param("limit", "0"))
                 .andExpect(status().isBadRequest())
                 .andReturn().getResponse();
-        var body = json.readTree(response.getContentAsByteArray());
-        assertEquals("VALIDATION_FAILED", body.path("code").asText());
-        assertTrue(body.path("data").isArray());
-        assertFalse(body.path("data").isEmpty());
+        var constraintBody = json.readTree(constraintResp.getContentAsByteArray());
+        assertEquals("VALIDATION_FAILED", constraintBody.path("code").asText());
+        assertEquals("limit", constraintBody.path("data").get(0).path("field").asText());
+
+        var mismatchResp = mvc.perform(get("/api/probe/param").param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse();
+        var mismatchBody = json.readTree(mismatchResp.getContentAsByteArray());
+        assertEquals("VALIDATION_FAILED", mismatchBody.path("code").asText());
+        assertEquals("limit", mismatchBody.path("data").get(0).path("field").asText());
+    }
+
+    @Test
+    void explicitRequestParamAndPathVariableNamesTakePrecedenceOverJavaParameterName() throws Exception {
+        var renamedParamResp = mvc.perform(get("/api/probe/renamed-param").param("max_items", "0"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse();
+        var renamedParamBody = json.readTree(renamedParamResp.getContentAsByteArray());
+        assertEquals("VALIDATION_FAILED", renamedParamBody.path("code").asText());
+        assertEquals("max_items", renamedParamBody.path("data").get(0).path("field").asText());
+
+        var renamedPathResp = mvc.perform(get("/api/probe/renamed-path/0"))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse();
+        var renamedPathBody = json.readTree(renamedPathResp.getContentAsByteArray());
+        assertEquals("VALIDATION_FAILED", renamedPathBody.path("code").asText());
+        assertEquals("item_id", renamedPathBody.path("data").get(0).path("field").asText());
     }
 
     @Test
@@ -124,6 +147,16 @@ class ApiExceptionHandlerTest {
         @GetMapping("/param")
         ApiResponse<Integer> param(@RequestParam("limit") @Min(1) int limit) {
             return ApiResponse.success(limit);
+        }
+
+        @GetMapping("/renamed-param")
+        ApiResponse<Integer> renamedParam(@RequestParam(name = "max_items") @Min(1) int internalLimit) {
+            return ApiResponse.success(internalLimit);
+        }
+
+        @GetMapping("/renamed-path/{item_id}")
+        ApiResponse<Long> renamedPath(@PathVariable("item_id") @Min(1) long internalId) {
+            return ApiResponse.success(internalId);
         }
 
         @GetMapping("/boom")

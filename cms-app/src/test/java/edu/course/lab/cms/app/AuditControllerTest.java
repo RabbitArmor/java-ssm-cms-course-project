@@ -65,18 +65,22 @@ class AuditControllerTest {
     }
 
     @Test
-    void authorizedUserReceivesPagedAuditLogsWithIsoUtcTimestamp() throws Exception {
+    void authorizedUserReceivesPagedAuditLogsWithExactParsedUtcBoundaries() throws Exception {
         var expected = new AuditEntry(10L, 2L, AuditConstants.ACTION_PUBLISH,
                 AuditConstants.TARGET_ARTICLE, 3L, "SUCCESS", LocalDateTime.of(2026, 11, 26, 9, 0, 0));
+        var captured = new java.util.concurrent.atomic.AtomicReference<AuditFilter>();
         var service = new AuditService(null) {
             @Override
             public PageResult<AuditEntry> list(AuditFilter filter) {
+                captured.set(filter);
                 return new PageResult<>(List.of(expected), filter.getPage(), filter.getSize(), 1L);
             }
         };
         try (var validator = validator()) {
-            var response = mvc(usersWith(Set.of("audit.read")), validator, service)
-                    .perform(get("/api/audit/logs")
+            var mvc = mvc(usersWith(Set.of("audit.read")), validator, service);
+
+            // 无小数秒
+            var response = mvc.perform(get("/api/audit/logs")
                             .param("page", "1")
                             .param("size", "20")
                             .param("actorId", "2")
@@ -89,6 +93,16 @@ class AuditControllerTest {
             assertEquals("OK", body.path("code").asText());
             assertEquals(1L, body.path("data").path("total").asLong());
             assertEquals("2026-11-26T09:00:00", body.path("data").path("items").get(0).path("occurredAt").asText());
+            assertEquals(LocalDateTime.of(2026, 11, 26, 0, 0, 0), captured.get().getFrom());
+            assertEquals(LocalDateTime.of(2026, 11, 27, 0, 0, 0), captured.get().getTo());
+
+            // 合法小数秒（1 位与 6 位微秒精度）
+            mvc.perform(get("/api/audit/logs")
+                            .param("from", "2026-11-26T10:00:00.1")
+                            .param("to", "2026-11-26T10:00:00.123456"))
+                    .andExpect(status().isOk());
+            assertEquals(LocalDateTime.of(2026, 11, 26, 10, 0, 0, 100_000_000), captured.get().getFrom());
+            assertEquals(LocalDateTime.of(2026, 11, 26, 10, 0, 0, 123_456_000), captured.get().getTo());
         }
     }
 
@@ -113,9 +127,24 @@ class AuditControllerTest {
                     .andExpect(status().isBadRequest()).andReturn().getResponse();
             assertEquals("VALIDATION_FAILED", json.readTree(badAction.getContentAsByteArray()).path("code").asText());
 
-            var offsetTime = mvc.perform(get("/api/audit/logs").param("from", "2026-11-26T08:00:00+08:00"))
-                    .andExpect(status().isBadRequest()).andReturn().getResponse();
-            assertEquals("VALIDATION_FAILED", json.readTree(offsetTime.getContentAsByteArray()).path("code").asText());
+            for (String invalidTimestamp : List.of(
+                    "2026-11-26T10:00:00.100000.1",
+                    "2026-11-26T10:00:00.1234567",
+                    "2026-11-26T10:00:00.",
+                    "2026-11-26T10:00:00Z",
+                    "2026-11-26T08:00:00+08:00")) {
+                var badFrom = mvc.perform(get("/api/audit/logs").param("from", invalidTimestamp))
+                        .andExpect(status().isBadRequest()).andReturn().getResponse();
+                var fromBody = json.readTree(badFrom.getContentAsByteArray());
+                assertEquals("VALIDATION_FAILED", fromBody.path("code").asText());
+                assertEquals("from", fromBody.path("data").get(0).path("field").asText());
+
+                var badTo = mvc.perform(get("/api/audit/logs").param("to", invalidTimestamp))
+                        .andExpect(status().isBadRequest()).andReturn().getResponse();
+                var toBody = json.readTree(badTo.getContentAsByteArray());
+                assertEquals("VALIDATION_FAILED", toBody.path("code").asText());
+                assertEquals("to", toBody.path("data").get(0).path("field").asText());
+            }
 
             var reversedRange = mvc.perform(get("/api/audit/logs")
                             .param("from", "2026-11-26T10:00:00")

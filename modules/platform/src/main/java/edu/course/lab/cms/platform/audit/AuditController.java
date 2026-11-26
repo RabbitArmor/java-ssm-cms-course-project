@@ -5,10 +5,14 @@ import edu.course.lab.cms.platform.api.ApiResponse;
 import edu.course.lab.cms.platform.api.PageResult;
 import edu.course.lab.cms.platform.session.CurrentUserProvider;
 import jakarta.validation.Valid;
+import java.beans.PropertyEditorSupport;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +26,16 @@ public class AuditController {
     public AuditController(AuditService audit, ObjectProvider<CurrentUserProvider> userProvider) {
         this.audit = audit;
         this.userProvider = userProvider;
+    }
+
+    @InitBinder
+    void initBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(LocalDateTime.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                setValue(text == null || text.isEmpty() ? null : AuditFilter.parseUtcTimestamp(text));
+            }
+        });
     }
 
     @GetMapping

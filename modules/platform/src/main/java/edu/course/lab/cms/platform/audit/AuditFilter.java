@@ -4,20 +4,43 @@ import edu.course.lab.cms.platform.api.PageQuery;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
-import org.springframework.format.annotation.DateTimeFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import java.time.temporal.ChronoField;
 
 public class AuditFilter extends PageQuery {
+    public static final DateTimeFormatter UTC_TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("uuuu-MM-dd'T'HH:mm:ss")
+            .optionalStart()
+            .appendFraction(ChronoField.NANO_OF_SECOND, 1, 6, true)
+            .optionalEnd()
+            .toFormatter()
+            .withResolverStyle(ResolverStyle.STRICT);
+
     @Positive
     private Long actorId;
 
     @Pattern(regexp = "[A-Z][A-Z0-9_]{0,63}")
     private String action;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]")
     private LocalDateTime from;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]")
     private LocalDateTime to;
+
+    public static LocalDateTime parseUtcTimestamp(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            throw new IllegalArgumentException("UTC timestamp must not be empty");
+        }
+        try {
+            return LocalDateTime.parse(raw, UTC_TIMESTAMP_FORMATTER);
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(
+                    "Invalid UTC local date-time (expected yyyy-MM-dd'T'HH:mm:ss with up to 6 fractional digits)",
+                    exception);
+        }
+    }
 
     public Long getActorId() {
         return actorId;

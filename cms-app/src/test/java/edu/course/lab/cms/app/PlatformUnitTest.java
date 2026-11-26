@@ -43,6 +43,23 @@ class PlatformUnitTest {
     }
 
     @Test
+    void auditFilterParsesStrictUtcTimestampsUpToSixFractionalDigits() {
+        assertEquals(LocalDateTime.of(2026, 11, 26, 10, 0, 0),
+                AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00"));
+        assertEquals(LocalDateTime.of(2026, 11, 26, 10, 0, 0, 100_000_000),
+                AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.1"));
+        assertEquals(LocalDateTime.of(2026, 11, 26, 10, 0, 0, 123_456_000),
+                AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.123456"));
+
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.100000.1"));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00.1234567"));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00."));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T10:00:00Z"));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-11-26T08:00:00+08:00"));
+        assertThrows(IllegalArgumentException.class, () -> AuditFilter.parseUtcTimestamp("2026-02-30T10:00:00"));
+    }
+
+    @Test
     void currentUserAndPageResultHandleNullCollectionsDefensively() {
         var user = new CurrentUser(1L, null, null);
         assertTrue(user.permissions().isEmpty());

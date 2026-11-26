@@ -14,7 +14,7 @@
 
 角色分配、分类启停、审核、发布和下架的成功记录在业务事务内调用 `AuditService.recordSuccess`。业务回滚时，对应成功记录一同回滚。写入失败记录时，由调用方捕获业务异常，在业务事务结束后调用 `recordFailure`，按需保留原业务异常并在服务端记录审计写入失败。动作和对象类型使用 `AuditConstants` 中定义的服务端常量，例如 `ASSIGN_ROLE`、`ENABLE_CATEGORY`、`DISABLE_CATEGORY`、`APPROVE`、`RETURN`、`PUBLISH`、`OFFLINE` 和 `USER`、`CATEGORY`、`ARTICLE`。
 
-表中保存操作者 ID、动作、对象类型及 ID、发生时间和结果。查询接口 `GET /api/audit/logs` 要求 `audit.read`，支持按 `actorId`、`action` 和时间区间筛选。`from` 含边界，`to` 不含边界，使用 UTC 的 ISO 本地时间格式（例如 `2026-11-26T00:00:00`）。A 提供会话实现前，接口返回 401。
+表中保存操作者 ID、动作、对象类型及 ID、发生时间和结果。查询接口 `GET /api/audit/logs` 要求 `audit.read`，支持按 `actorId`、`action` 和时间区间筛选。`from` 含边界，`to` 不含边界，使用 UTC 的 ISO 本地时间格式（`yyyy-MM-dd'T'HH:mm:ss`，可选单个 1 至 6 位小数秒段以对齐数据库 `TIMESTAMP(6)`，不接受 `Z` 或 `+08:00` 等时区标记，例如 `2026-11-26T00:00:00` 或 `2026-11-26T00:00:00.123456`）。A 提供会话实现前，接口返回 401。
 
 ## 持久层约定
 

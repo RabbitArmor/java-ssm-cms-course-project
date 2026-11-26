@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,8 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -64,10 +67,12 @@ public class ApiExceptionHandler {
             if (exception instanceof HandlerMethodValidationException validation && status.is4xxClientError()) {
                 List<FieldViolation> violations = validation.getParameterValidationResults().stream()
                         .flatMap(result -> {
-                            String name = result.getMethodParameter().getParameterName();
-                            String field = name != null ? name : "arg" + result.getMethodParameter().getParameterIndex();
+                            String field = resolveParameterName(result.getMethodParameter());
                             return result.getResolvableErrors().stream()
-                                    .map(err -> new FieldViolation(field, err.getDefaultMessage()));
+                                    .map(err -> err instanceof FieldError fieldError
+                                            ? new FieldViolation(fieldError.getField(), fieldError.isBindingFailure()
+                                                    ? "参数格式无效" : fieldError.getDefaultMessage())
+                                            : new FieldViolation(field, err.getDefaultMessage()));
                         })
                         .toList();
                 return failure(status, "VALIDATION_FAILED", "参数校验失败", violations.isEmpty() ? null : violations);
@@ -79,6 +84,38 @@ public class ApiExceptionHandler {
         }
         LOGGER.error("Unexpected request failure", exception);
         return failure(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "服务器内部错误", null);
+    }
+
+    private static String resolveParameterName(MethodParameter parameter) {
+        RequestParam requestParam = parameter.getParameterAnnotation(RequestParam.class);
+        if (requestParam != null) {
+            String explicit = firstNonBlank(requestParam.name(), requestParam.value());
+            if (explicit != null) {
+                return explicit;
+            }
+        }
+        PathVariable pathVariable = parameter.getParameterAnnotation(PathVariable.class);
+        if (pathVariable != null) {
+            String explicit = firstNonBlank(pathVariable.name(), pathVariable.value());
+            if (explicit != null) {
+                return explicit;
+            }
+        }
+        String parameterName = parameter.getParameterName();
+        if (parameterName != null && !parameterName.isBlank()) {
+            return parameterName;
+        }
+        return "arg" + parameter.getParameterIndex();
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        if (second != null && !second.isBlank()) {
+            return second;
+        }
+        return null;
     }
 
     private ResponseEntity<ApiResponse<?>> failure(HttpStatusCode status, String code, String message, Object data) {

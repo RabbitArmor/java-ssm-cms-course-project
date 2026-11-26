@@ -17,6 +17,13 @@
 
 每人负责本模块的代码、SQL、接口、测试及报告章节，保留个人 Git 提交和 AI 交互及人工校验记录。总仓库汇总架构图、E-R 图、流程图、结题报告及可复现部署说明。
 
+## 公共工程
+
+- [构建与部署](docs/deploy.md)
+- [共享接口草案](docs/shared-contract.md)
+- [Apifox 接口定义](docs/apifox.openapi.json)和[验收集合](docs/apifox.postman_collection.json)
+- [模块 D 验收与联调记录](modules/platform/README.md)
+
 ## Git 协作
 
 小组成员共用此仓库。四个模块位于 `modules/` 下。首次获取项目时运行：

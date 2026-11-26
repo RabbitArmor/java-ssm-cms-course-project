@@ -1,0 +1,140 @@
+{
+  "info": {
+    "name": "实验室安全 CMS 公共工程验收",
+    "description": "启动 Tomcat 与 MySQL 后运行前两项。清除会话 Cookie，或在 A 接入前运行审计匿名检查。MySQL 停止时可单独运行故障检查。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/cms"
+    }
+  ],
+  "item": [
+    {
+      "name": "正常部署",
+      "item": [
+        {
+          "name": "HTTP 存活",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"JSON code OK\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"OK\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          }
+        },
+        {
+          "name": "MySQL 就绪",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"JSON code OK\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"OK\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health/db"
+          }
+        },
+        {
+          "name": "匿名审计查询受限",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"JSON code UNAUTHENTICATED\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"UNAUTHENTICATED\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/audit/logs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "停止 MySQL 后单独运行",
+      "item": [
+        {
+          "name": "数据库断开时 HTTP 仍存活",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"JSON code OK\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"OK\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          }
+        },
+        {
+          "name": "数据库断开时返回 503",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 503\", function () {",
+                  "    pm.response.to.have.status(503);",
+                  "});",
+                  "pm.test(\"JSON code DB_UNAVAILABLE\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"DB_UNAVAILABLE\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health/db"
+          }
+        }
+      ]
+    }
+  ]
+}

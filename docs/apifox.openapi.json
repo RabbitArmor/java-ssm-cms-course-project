@@ -1,0 +1,181 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "实验室安全 CMS 公共接口",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/cms"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "HTTP 存活检查",
+        "responses": {
+          "200": {
+            "description": "可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "code": "OK",
+                  "message": "成功",
+                  "data": {
+                    "status": "UP"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/logs": {
+      "get": {
+        "summary": "分页查询审计日志",
+        "description": "使用有 audit.read 权限的会话。时间参数为 UTC，本区间包含起点、排除终点。",
+        "security": [{ "SessionCookie": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 2147483647, "default": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "actorId", "in": "query", "schema": { "type": "integer", "format": "int64", "minimum": 1 } },
+          { "name": "action", "in": "query", "schema": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" }, "example": "PUBLISH" },
+          { "name": "from", "in": "query", "schema": { "type": "string" }, "example": "2026-11-26T00:00:00" },
+          { "name": "to", "in": "query", "schema": { "type": "string" }, "example": "2026-11-27T00:00:00" }
+        ],
+        "responses": {
+          "200": {
+            "description": "分页结果",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuditResponse" },
+                "example": {
+                  "code": "OK",
+                  "message": "成功",
+                  "data": {
+                    "items": [{ "id": 1, "actorId": 2, "action": "PUBLISH", "targetType": "ARTICLE", "targetId": 3, "result": "SUCCESS", "occurredAt": "2026-11-26T09:00:00" }],
+                    "page": 1,
+                    "size": 20,
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "参数或时间范围无效" },
+          "401": { "description": "未登录" },
+          "403": { "description": "缺少审计查询权限" }
+        }
+      }
+    },
+    "/api/health/db": {
+      "get": {
+        "summary": "MySQL 就绪检查",
+        "responses": {
+          "200": {
+            "description": "可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "code": "OK",
+                  "message": "成功",
+                  "data": {
+                    "status": "UP"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "数据库暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "code": "DB_UNAVAILABLE",
+                  "message": "数据库暂不可用",
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "SessionCookie": { "type": "apiKey", "in": "cookie", "name": "JSESSIONID" }
+    },
+    "schemas": {
+      "AuditResponse": {
+        "type": "object",
+        "required": ["code", "message", "data"],
+        "properties": {
+          "code": { "type": "string", "enum": ["OK"] },
+          "message": { "type": "string" },
+          "data": {
+            "type": "object",
+            "required": ["items", "page", "size", "total"],
+            "properties": {
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/AuditEntry" } },
+              "page": { "type": "integer", "minimum": 1 },
+              "size": { "type": "integer", "minimum": 1, "maximum": 100 },
+              "total": { "type": "integer", "format": "int64", "minimum": 0 }
+            }
+          }
+        }
+      },
+      "AuditEntry": {
+        "type": "object",
+        "required": ["id", "actorId", "action", "targetType", "targetId", "result", "occurredAt"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "actorId": { "type": "integer", "format": "int64" },
+          "action": { "type": "string" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "result": { "type": "string", "enum": ["SUCCESS", "FAILURE"] },
+          "occurredAt": { "type": "string", "description": "UTC 时间，ISO 本地日期时间格式" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "UP"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

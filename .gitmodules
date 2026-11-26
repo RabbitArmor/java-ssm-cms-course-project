@@ -1,0 +1,12 @@
+[submodule "modules/identity"]
+	path = modules/identity
+	url = https://github.com/akkamoonly/java-ssm-cms-identity.git
+[submodule "modules/taxonomy"]
+	path = modules/taxonomy
+	url = https://github.com/akkamoonly/java-ssm-cms-taxonomy.git
+[submodule "modules/content"]
+	path = modules/content
+	url = https://github.com/akkamoonly/java-ssm-cms-content.git
+[submodule "modules/platform"]
+	path = modules/platform
+	url = https://github.com/akkamoonly/java-ssm-cms-platform.git

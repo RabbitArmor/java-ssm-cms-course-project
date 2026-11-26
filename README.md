@@ -1,2 +1,22 @@
-# java-ssm-cms-course-project
-SSM CMS course project: integration, documentation, and release
+# JAVA 框架技术（一）课程设计
+
+四人协作完成基于实验二 SSM 整合方案的 CMS。课程项目的具体业务主题待小组讨论确定。
+
+## 模块分工
+
+- 成员 A · [账号与权限](modules/identity) · 注册、登录、退出、角色分配和 Spring AOP 权限校验。负责用户、角色、权限及关联表，提交权限正向与越权测试。
+- 成员 B · [内容分类](modules/taxonomy) · 多级分类增删改、排序、启停和分类查询接口。负责分类表，提交循环父级和分类引用约束测试。
+- 成员 C · [文章与审核](modules/content) · 文章增删改、审核、批量发布、下架、分页和组合搜索。负责文章及审核记录的设计，以及完整的状态流转测试。
+- 成员 D · [审计与集成](modules/platform) · 操作日志、统一响应与异常处理、参数校验基础设施，以及联调与部署。负责日志表、ApiFox 集合和查询性能对比记录。
+
+每人负责本模块的代码、SQL、接口、测试及报告章节，保留个人 Git 提交和 AI 交互及人工校验记录。总仓库汇总架构图、E-R 图、流程图、结题报告及可复现部署说明。
+
+## Git 协作
+
+首次获取项目时，在具备各仓库访问权限后运行：
+
+```sh
+git clone --recurse-submodules https://github.com/akkamoonly/java-ssm-cms-course-project.git
+```
+
+各成员在自己的子仓库创建分支、提交并合并。集成人更新总仓库指向的子模块提交，联调通过后提交四个引用。总仓库记录一次可复现的模块版本组合。更新总仓库后运行 `git submodule update --init --recursive` 可检出相应版本。

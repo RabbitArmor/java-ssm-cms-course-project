@@ -44,8 +44,8 @@
           { "name": "size", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
           { "name": "actorId", "in": "query", "schema": { "type": "integer", "format": "int64", "minimum": 1 } },
           { "name": "action", "in": "query", "schema": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" }, "example": "PUBLISH" },
-          { "name": "from", "in": "query", "schema": { "type": "string" }, "example": "2026-11-26T00:00:00" },
-          { "name": "to", "in": "query", "schema": { "type": "string" }, "example": "2026-11-27T00:00:00" }
+          { "name": "from", "in": "query", "description": "起始时间（含），UTC ISO 本地日期时间格式（不带时区偏移）", "schema": { "type": "string" }, "example": "2026-11-26T00:00:00" },
+          { "name": "to", "in": "query", "description": "结束时间（不含），UTC ISO 本地日期时间格式（不带时区偏移）", "schema": { "type": "string" }, "example": "2026-11-27T00:00:00" }
         ],
         "responses": {
           "200": {
@@ -66,9 +66,58 @@
               }
             }
           },
-          "400": { "description": "参数或时间范围无效" },
-          "401": { "description": "未登录" },
-          "403": { "description": "缺少审计查询权限" }
+          "400": {
+            "description": "参数或时间范围无效",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "validationFailed": {
+                    "summary": "分页或筛选参数校验失败",
+                    "value": {
+                      "code": "VALIDATION_FAILED",
+                      "message": "参数校验失败",
+                      "data": [{ "field": "size", "message": "must be less than or equal to 100" }]
+                    }
+                  },
+                  "invalidTimeRange": {
+                    "summary": "开始时间不早于结束时间",
+                    "value": {
+                      "code": "INVALID_TIME_RANGE",
+                      "message": "开始时间必须早于结束时间",
+                      "data": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "code": "UNAUTHENTICATED",
+                  "message": "请先登录",
+                  "data": null
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "缺少审计查询权限",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "code": "FORBIDDEN",
+                  "message": "没有审计查询权限",
+                  "data": null
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -98,7 +147,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
                   "code": "DB_UNAVAILABLE",
@@ -157,14 +206,14 @@
         ],
         "properties": {
           "code": {
-            "type": "string"
+            "type": "string",
+            "enum": ["OK"]
           },
           "message": {
             "type": "string"
           },
           "data": {
             "type": "object",
-            "nullable": true,
             "properties": {
               "status": {
                 "type": "string",
@@ -173,6 +222,27 @@
                 ]
               }
             }
+          }
+        }
+      },
+      "FieldViolation": {
+        "type": "object",
+        "required": ["field", "message"],
+        "properties": {
+          "field": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["code", "message", "data"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/FieldViolation" }
           }
         }
       }

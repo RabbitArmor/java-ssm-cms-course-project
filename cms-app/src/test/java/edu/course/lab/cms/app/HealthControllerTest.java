@@ -41,8 +41,11 @@ class HealthControllerTest {
         var response = mvc.perform(get("/api/health/db"))
                 .andExpect(status().isServiceUnavailable())
                 .andReturn().getResponse();
+        var raw = response.getContentAsString();
         var body = json.readTree(response.getContentAsByteArray());
         assertEquals("DB_UNAVAILABLE", body.path("code").asText());
         assertEquals("数据库暂不可用", body.path("message").asText());
+        assertEquals(true, body.path("data").isNull());
+        assertEquals(false, raw.contains("private connection details"));
     }
 }

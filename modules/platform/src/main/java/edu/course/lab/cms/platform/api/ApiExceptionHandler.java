@@ -7,12 +7,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -23,8 +25,8 @@ public class ApiExceptionHandler {
         return failure(exception.status(), exception.code(), exception.getMessage(), null);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<?>> handleBodyValidation(MethodArgumentNotValidException exception) {
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiResponse<?>> handleBindingValidation(BindException exception) {
         List<FieldViolation> violations = exception.getBindingResult().getAllErrors().stream()
                 .map(error -> error instanceof FieldError fieldError
                         ? new FieldViolation(fieldError.getField(), fieldError.isBindingFailure()
@@ -43,12 +45,32 @@ public class ApiExceptionHandler {
         return failure(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "参数校验失败", violations);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        String field = exception.getName() != null ? exception.getName() : "parameter";
+        return failure(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "参数校验失败",
+                List.of(new FieldViolation(field, "参数格式无效")));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<?>> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        return failure(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "请求体格式无效", null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleOther(Exception exception) {
         if (exception instanceof ErrorResponse error) {
             HttpStatusCode status = error.getStatusCode();
-            if (exception instanceof HandlerMethodValidationException && status.is4xxClientError()) {
-                return failure(status, "VALIDATION_FAILED", "参数校验失败", null);
+            if (exception instanceof HandlerMethodValidationException validation && status.is4xxClientError()) {
+                List<FieldViolation> violations = validation.getParameterValidationResults().stream()
+                        .flatMap(result -> {
+                            String name = result.getMethodParameter().getParameterName();
+                            String field = name != null ? name : "arg" + result.getMethodParameter().getParameterIndex();
+                            return result.getResolvableErrors().stream()
+                                    .map(err -> new FieldViolation(field, err.getDefaultMessage()));
+                        })
+                        .toList();
+                return failure(status, "VALIDATION_FAILED", "参数校验失败", violations.isEmpty() ? null : violations);
             }
             if (status.is4xxClientError()) {
                 return ResponseEntity.status(status).headers(error.getHeaders())

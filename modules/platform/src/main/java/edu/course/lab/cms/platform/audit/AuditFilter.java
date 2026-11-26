@@ -13,10 +13,10 @@ public class AuditFilter extends PageQuery {
     @Pattern(regexp = "[A-Z][A-Z0-9_]{0,63}")
     private String action;
 
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]")
     private LocalDateTime from;
 
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]")
     private LocalDateTime to;
 
     public Long getActorId() {

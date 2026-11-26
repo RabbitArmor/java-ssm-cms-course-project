@@ -4,6 +4,6 @@ import java.util.Set;
 
 public record CurrentUser(long userId, Long labTypeId, Set<String> permissions) {
     public CurrentUser {
-        permissions = Set.copyOf(permissions);
+        permissions = permissions == null ? Set.of() : Set.copyOf(permissions);
     }
 }

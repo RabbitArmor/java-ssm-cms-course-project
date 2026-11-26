@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "实验室安全 CMS 公共工程验收",
-    "description": "启动 Tomcat 与 MySQL 后运行前两项。清除会话 Cookie，或在 A 接入前运行审计匿名检查。MySQL 停止时可单独运行故障检查。",
+    "description": "启动 Tomcat 与 MySQL 后运行“正常部署”目录；清除会话 Cookie 或在 A 接入前可验证匿名审计受限与非法分页校验。MySQL 停止时在隔离测试实例上单独运行故障检查。",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -81,6 +81,29 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/audit/logs"
+          }
+        },
+        {
+          "name": "非法分页参数校验",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"JSON code VALIDATION_FAILED\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"VALIDATION_FAILED\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/audit/logs?size=101"
           }
         }
       ]

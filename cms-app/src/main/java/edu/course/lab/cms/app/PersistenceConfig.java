@@ -46,6 +46,7 @@ public class PersistenceConfig {
         config.setMaximumPoolSize(10);
         config.setConnectionTimeout(3_000);
         config.setInitializationFailTimeout(-1);
+        config.addDataSourceProperty("connectionTimeZone", "UTC");
         config.setConnectionInitSql("SET time_zone = '+00:00'");
         return new HikariDataSource(config);
     }

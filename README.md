@@ -19,10 +19,10 @@
 
 ## Git 协作
 
-首次获取项目时，在具备各仓库访问权限后运行：
+小组成员共用此仓库。四个模块位于 `modules/` 下。首次获取项目时运行：
 
 ```sh
-git clone --recurse-submodules https://github.com/akkamoonly/java-ssm-cms-course-project.git
+git clone https://github.com/akkamoonly/java-ssm-cms-course-project.git
 ```
 
-各成员在自己的子仓库创建分支、提交并合并。集成人更新总仓库指向的子模块提交，联调通过后提交四个引用。总仓库记录一次可复现的模块版本组合。更新总仓库后运行 `git submodule update --init --recursive` 可检出相应版本。
+从最新的 `main` 创建功能分支，在对应模块提交代码、SQL、接口文档和测试，然后向 `main` 提交 Pull Request。若任务涉及跨模块接口或数据库结构变更，先和对应负责人确认，再在 PR 中说明联调结果。使用各自的 GitHub 账号提交，便于核对贡献记录。
